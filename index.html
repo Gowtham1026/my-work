@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Statement Comparative Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        label {
+            margin: 10px 0 5px;
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #results {
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Financial Statement Comparative Analysis</h1>
+        <form id="uploadForm">
+            <label for="file1">Upload Excel File for Year 1:</label>
+            <input type="file" id="file1" accept=".xls,.xlsx" required>
+            
+            <label for="file2">Upload Excel File for Year 2:</label>
+            <input type="file" id="file2" accept=".xls,.xlsx" required>
+            
+            <button type="submit">Analyze</button>
+        </form>
+        
+        <div id="results">
+            <h2>Comparative Analysis Result</h2>
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Year 1</th>
+                        <th>Year 2</th>
+                        <th>Change (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Results will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.2/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const file1 = document.getElementById('file1').files[0];
+            const file2 = document.getElementById('file2').files[0];
+            if (file1 && file2) {
+                Promise.all([readExcel(file1), readExcel(file2)]).then(([year1, year2]) => {
+                    const alignedData = alignData(year1, year2);
+                    displayResults(alignedData);
+                }).catch(error => {
+                    console.error('Error reading files:', error);
+                });
+            }
+        });
+
+        function readExcel(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    let parsedData = {};
+                    json.slice(1).forEach(row => {
+                        if (row[0]) {
+                            // Parse numeric values and clean up
+                            parsedData[row[0]] = parseFloat((row[1] || '0').toString().replace(/,/g, '')) || 0;
+                        }
+                    });
+                    resolve(parsedData);
+                };
+                reader.onerror = (error) => reject(error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function alignData(year1, year2) {
+            const allKeys = new Set([...Object.keys(year1), ...Object.keys(year2)]);
+            const alignedData = [];
+            allKeys.forEach(key => {
+                const y1Value = year1[key] || 0;
+                const y2Value = year2[key] || 0;
+                const change = y1Value === 0 ? 'N/A' : ((y2Value - y1Value) / y1Value * 100).toFixed(2) + '%';
+                alignedData.push({ metric: key, year1: y1Value, year2: y2Value, change });
+            });
+            return alignedData;
+        }
+
+        function displayResults(alignedData) {
+            const tableBody = document.querySelector('#resultTable tbody');
+            tableBody.innerHTML = '';
+            alignedData.forEach(row => {
+                const htmlRow = `<tr>
+                    <td>${row.metric}</td>
+                    <td>${row.year1}</td>
+                    <td>${row.year2}</td>
+                    <td>${row.change}</td>
+                </tr>`;
+                tableBody.innerHTML += htmlRow;
+            });
+        }
+    </script>
+</body>
+</html>
